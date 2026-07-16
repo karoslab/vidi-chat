@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.next-build/
+.next-preview/
+.playwright-mcp/
+data/
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.env*
+/accounts*
+*.local.*

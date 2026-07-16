@@ -1,0 +1,40 @@
+{
+  "name": "vidi-chat",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 4183",
+    "build": "next build",
+    "build:prod": "NEXT_DIST_DIR=.next-build next build",
+    "deploy:kickstart": "launchctl kickstart -k gui/$(id -u)/com.vidi.vidichat",
+    "start": "next start -H 127.0.0.1 -p 4183",
+    "test": "env -u VIDI_DATA_DIR VIDI_TEST=1 node --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@playwright/mcp": "^0.0.77",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "playwright": "^1.61.1",
+    "typescript": "^6.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/karoslab/vidi-chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/karoslab/vidi-chat/issues"
+  },
+  "homepage": "https://github.com/karoslab/vidi-chat#readme"
+}

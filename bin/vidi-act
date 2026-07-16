@@ -1,0 +1,510 @@
+#!/usr/bin/env node
+/**
+ * vidi-act — the agent's ACTION CHOKEPOINT.
+ *
+ * In act mode, Vidi (the spawned `claude` CLI) is told to run every real-world
+ * action THROUGH this shim rather than curling the Hands server or shelling out
+ * to gws itself. The shim classifies the verb against ONE declarative table
+ * and either (a) performs it directly (safe verbs), or (b) files it into the
+ * confirm queue so the owner hears the ask and says "confirm" — an irreversible
+ * action can never fire without that spoken yes.
+ *
+ * Dependency-free .mjs-style Node so it runs under `node bin/vidi-act …`, which
+ * act mode's Bash allowlist admits via the `Bash(vidi-act *)` wrapper.
+ *
+ * Usage:
+ *   vidi-act <verb> '<json-args>'
+ *   vidi-act timer '{"minutes":5}'
+ *   vidi-act email-send '{"to":"mom@x.com","subject":"hi","body":"..."}'
+ *
+ * A `--from-tool-output` / `--derived` flag (or `derived:true` in the args)
+ * marks that the action's content/target came from a prior tool result (a read
+ * email, a fetched page, a file's contents). Per the W3 injection rule, ANY
+ * such action is forced to `ask` regardless of the table — untrusted tool
+ * output must never single-handedly drive an irreversible action.
+ *
+ * Exit codes: 0 on a completed safe action; nonzero on a refusal/pending (so
+ * the model sees the turn did NOT complete and must end its turn + tell
+ * the owner).
+ */
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * Control token (B1) — the confirm-request route is now token-gated so a blind
+ * local POST can't park an action. This shim runs as the same user and reads the
+ * same data/control-token file vidictl uses; VIDI_CONTROL_TOKEN is the fallback.
+ */
+function controlToken() {
+  try {
+    return fs.readFileSync(path.join(REPO, "data", "control-token"), "utf8").trim();
+  } catch {
+    return process.env.VIDI_CONTROL_TOKEN || "";
+  }
+}
+
+const APP_PORT = process.env.VIDI_PORT || "4183";
+const HANDS_PORT = process.env.VIDI_HANDS_PORT || "4184";
+const APP_BASE = `http://127.0.0.1:${APP_PORT}`;
+const HANDS_BASE = `http://127.0.0.1:${HANDS_PORT}`;
+
+/* ------------------------------------------------------------------------- *
+ * THE ONE DECLARATIVE VERB TABLE.
+ *
+ * Each verb → { tier, target, describe }. This is the single source of truth
+ * for the safe/risky split — no scattered if-checks anywhere else. It is a
+ * plain data table on purpose (design note 2026-07-03): Workstream F lifts it
+ * into per-agent permission rulesets as a DATA change, without reopening the
+ * shim.
+ *
+ *   tier    "safe"    → performed directly against `target` (no confirm)
+ *           "confirm" → filed into the confirm queue; the owner must say "confirm"
+ *   target  "hands"        → POST :4184/act  (GUI / system actuation)
+ *           "gws-email"    → confirm kind gws-email
+ *           "gws-calendar" → confirm kind gws-calendar
+ *           "write-file"   → confirm kind write-file
+ *   describe(args) → the spoken sentence for a confirm ask
+ *
+ * DEFAULT-DENY: any verb NOT in this table falls through to `ask` (confirm),
+ * never silent execution (W3 security constraint #1 — we invert opencode's
+ * default-allow). A new capability is confirm-gated until explicitly classified
+ * safe here.
+ * ------------------------------------------------------------------------- */
+export const VERB_TABLE = {
+  // --- Safe: reversible / low-blast-radius system + media + context reads. ---
+  system: { tier: "safe", target: "hands", describe: () => "run a system action" },
+  timer: { tier: "safe", target: "hands", describe: (a) => `set a ${a.minutes ?? "?"}-minute timer` },
+  volume: { tier: "safe", target: "hands", describe: (a) => `set volume to ${a.level ?? "?"}` },
+  mute: { tier: "safe", target: "hands", describe: (a) => (a.on ? "mute" : "unmute") },
+  mediaPlayPause: { tier: "safe", target: "hands", describe: () => "play/pause media" },
+  mediaNext: { tier: "safe", target: "hands", describe: () => "skip to the next track" },
+  mediaPrev: { tier: "safe", target: "hands", describe: () => "go to the previous track" },
+  openApp: { tier: "safe", target: "hands", describe: (a) => `open ${a.name ?? "an app"}` },
+  reminder: { tier: "safe", target: "hands", describe: (a) => `set a reminder: ${a.text ?? ""}` },
+  notify: { tier: "safe", target: "hands", describe: () => "show a notification" },
+  context: { tier: "safe", target: "hands", describe: () => "read the screen context" },
+  snapshot: { tier: "safe", target: "hands", describe: () => "take an accessibility snapshot" },
+  presence: { tier: "safe", target: "hands", describe: () => "check presence" },
+  // These three ride SystemActions under {action:"system", verb, ...} exactly
+  // like timer/openApp above. They exist on the Swift side (SystemActions.run)
+  // but were unmapped here, so a natural `vidi-act openUrl …` fell to default-
+  // deny and built a flat payload that 400s after approval (audit findings
+  // 7/14/22). Classified safe (reversible, closed-set) like their siblings.
+  openUrl: { tier: "safe", target: "hands", describe: (a) => `open ${a.url ?? "a link"}` },
+  dnd: {
+    tier: "safe",
+    target: "hands",
+    describe: (a) => (a.on === false ? "turn off Do Not Disturb" : "turn on Do Not Disturb"),
+  },
+  runShortcut: {
+    tier: "safe",
+    target: "hands",
+    describe: (a) => `run the ${a.name ?? "?"} shortcut`,
+  },
+
+  // --- Confirm-tier: irreversible / outward-facing. The owner must say yes. ---
+  "send-message": {
+    tier: "confirm",
+    target: "hands",
+    describe: (a) => `text ${a.to ?? "someone"}: "${a.text ?? a.body ?? ""}"`,
+  },
+  "email-send": {
+    tier: "confirm",
+    target: "gws-email",
+    // Show the real recipient AND cc when present so the parked line the human
+    // approves matches the email that actually sends (audit findings 1, 2).
+    describe: (a) =>
+      `email ${a.to ?? "someone"}${a.cc ? ` (cc ${a.cc})` : ""} — "${a.subject ?? "(no subject)"}"`,
+  },
+  "calendar-create": {
+    tier: "confirm",
+    target: "gws-calendar",
+    describe: (a) => `add "${a.summary ?? "an event"}" to your calendar at ${a.start ?? "?"}`,
+  },
+  "write-file": {
+    tier: "confirm",
+    target: "write-file",
+    describe: (a) => `write the file ${a.path ?? "?"}`,
+  },
+};
+
+/**
+ * Directories the CLI can already write to directly (cwd + --add-dir). A
+ * write-file to a path inside one of these is NOT the shim's job — the model
+ * should just use its Write tool. The shim's write-file path exists ONLY for
+ * targets OUTSIDE the jail, and those are always confirm-tier. We treat an
+ * in-jail write-file as "use your tool" rather than routing it, but keep the
+ * confirm route for anything outside.
+ */
+const DIRECT_WRITE_DIRS = [
+  path.join(process.env.HOME || "", "Desktop"),
+  path.join(process.env.HOME || "", "Downloads"),
+];
+
+function isInDirectWriteDir(target) {
+  // Expand the tilde first (audit finding 13): path.resolve("~/Desktop/x")
+  // resolves "~" against CWD ("<cwd>/~/Desktop/x"), so the "just use your Write
+  // tool" short-circuit for the allowed Desktop/Downloads dirs NEVER fired for
+  // the natural "~/Desktop/..." emission — it parked a confirm the executor then
+  // refused. Expanded, it correctly matches the direct-write dirs.
+  const abs = path.resolve(expandTilde(target));
+  return DIRECT_WRITE_DIRS.some(
+    (d) => d && (abs === d || abs.startsWith(d + path.sep))
+  );
+}
+
+function handsToken() {
+  // The token is read from disk ONLY — never argv, never env-passed-in — so it
+  // can't leak through the model's transcript or a process listing.
+  if (process.env.VIDI_HANDS_TOKEN) return process.env.VIDI_HANDS_TOKEN;
+  try {
+    return fs.readFileSync(path.join(REPO, "data", "hands-token"), "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+function out(obj) {
+  process.stdout.write(
+    typeof obj === "string" ? obj + "\n" : JSON.stringify(obj, null, 2) + "\n"
+  );
+}
+
+function refuse(msg) {
+  // Refusals / pending go to the model with a nonzero exit so the turn is not
+  // treated as complete.
+  process.stderr.write(msg + "\n");
+  process.exitCode = 1;
+}
+
+/** Perform a safe verb directly against its target. Only "hands" today. */
+async function performSafe(verb, entry, args) {
+  if (entry.target !== "hands") {
+    // No safe verb targets gws/write-file — defensive.
+    refuse(`REFUSED: ${verb} is safe-tier but has no direct executor.`);
+    return;
+  }
+  const token = handsToken();
+  if (!token) {
+    refuse(
+      "Hands not configured — the vidi app isn't running or data/hands-token is missing."
+    );
+    return;
+  }
+  try {
+    const res = await fetch(`${HANDS_BASE}/act`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-vidi-hands-token": token },
+      body: JSON.stringify(args),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (json && json.ok === false) {
+      refuse(json.error || "That action didn't go through.");
+      return;
+    }
+    // Read verbs (context/presence/snapshot) carry their result in DATA fields
+    // (now/timelineSummary, or generation/app/elements), not a `say` string —
+    // printing the literal "Done." silently threw the screen context / snapshot
+    // the agent asked for away (audit finding 6). Prefer `say`; otherwise print
+    // the response payload (minus the ok flag) so the agent actually receives it.
+    if (json && typeof json.say === "string" && json.say.length > 0) {
+      out(json.say);
+    } else if (
+      json &&
+      typeof json === "object" &&
+      Object.keys(json).some((key) => key !== "ok")
+    ) {
+      const { ok, ...data } = json;
+      out(data);
+    } else {
+      out("Done.");
+    }
+  } catch (e) {
+    refuse(`Hands server unreachable on :${HANDS_PORT} (${e?.message || e}).`);
+  }
+}
+
+/** File a confirm-tier action; print the PENDING line; exit nonzero. */
+async function fileConfirmAction(kind, description, payload) {
+  try {
+    const res = await fetch(`${APP_BASE}/api/confirm/request`, {
+      method: "POST",
+      // No Origin header (native/curl-class) → passes the same-origin gate.
+      // X-Vidi-Control-Token satisfies the B1 token gate on the confirm route.
+      headers: {
+        "Content-Type": "application/json",
+        "X-Vidi-Control-Token": controlToken(),
+      },
+      body: JSON.stringify({ kind, description, payload }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      refuse(`Could not file the confirmation (HTTP ${res.status}).`);
+      return;
+    }
+  } catch (e) {
+    refuse(`Could not reach the confirm queue (${e?.message || e}).`);
+    return;
+  }
+  // The exact contract line the persona/route expects, then a nonzero exit.
+  process.stdout.write(
+    `PENDING CONFIRMATION: ${description} — tell the owner and end your turn.\n`
+  );
+  process.exitCode = 1;
+}
+
+async function main() {
+  const [verb, rawArgs, ...flags] = process.argv.slice(2);
+  if (!verb) {
+    refuse(
+      "usage: vidi-act <verb> '<json-args>'  — known safe verbs: " +
+        Object.entries(VERB_TABLE)
+          .filter(([, v]) => v.tier === "safe")
+          .map(([k]) => k)
+          .join(", ")
+    );
+    return;
+  }
+
+  let args = {};
+  if (rawArgs) {
+    try {
+      args = JSON.parse(rawArgs);
+    } catch {
+      refuse(`Args must be JSON. Got: ${rawArgs}`);
+      return;
+    }
+  }
+  if (!args || typeof args !== "object") args = {};
+
+  // Models routinely say "title" for what Google Calendar calls "summary"
+  // (live failure 2026-07-09: parked as "an event", then the executor threw on
+  // an empty summary). Accept both so the parked description the human
+  // approves shows the real event name and the executor gets a usable payload.
+  if (verb === "calendar-create" && args.summary == null && args.title != null) {
+    args.summary = args.title;
+  }
+
+  // email-send: models say "recipient" for "to" and "message"/"content" for
+  // "body". Without these aliases a keyed-wrong send either parked as "email
+  // someone" then threw on an empty recipient, or — worse — sent a REAL email
+  // with an empty body and reported success (audit finding 1). Alias so the
+  // parked description and the executor both get a usable payload.
+  if (verb === "email-send") {
+    if (args.to == null && args.recipient != null) args.to = args.recipient;
+    if (args.body == null && args.message != null) args.body = args.message;
+    if (args.body == null && args.content != null) args.body = args.content;
+  }
+
+  // write-file: models say "text"/"contents" for "content". Without the alias a
+  // keyed-wrong write silently created a ZERO-BYTE file (audit finding 15).
+  if (verb === "write-file") {
+    if (args.content == null && args.text != null) args.content = args.text;
+    if (args.content == null && args.contents != null) args.content = args.contents;
+  }
+
+  // send-message has NO Swift implementation — the confirm executor POSTs
+  // {action:"send-message"} to an /act switch that has no such case, so every
+  // approved text failed with "unknown action" AFTER the owner said confirm
+  // (audit findings 5/10/17/24). Until a Messages actuation is built, refuse at
+  // PARK time (speakable, nonzero exit) so nothing parks and no confirm ceremony
+  // ends in a broken action. The verb stays in the table so this stays honest.
+  if (verb === "send-message") {
+    refuse("I can't send messages yet — that's still being built.");
+    return;
+  }
+
+  // email-send: refuse a missing / @-less recipient at PARK time (audit findings
+  // 1, 4). A bare "mom" or an empty "to" used to sail through the confirm
+  // ceremony and fail only from the Gmail API after the spoken confirm. Move the
+  // failure BEFORE the ask, with a speakable reason.
+  if (verb === "email-send") {
+    const recipient = typeof args.to === "string" ? args.to.trim() : "";
+    if (!recipient || !recipient.includes("@")) {
+      refuse(
+        recipient
+          ? `"${recipient}" isn't an email address — I need a real one (like name@example.com). Who should I email?`
+          : "I need an email address to send to — who should I email?"
+      );
+      return;
+    }
+  }
+
+  // write-file: refuse when content is MISSING ENTIRELY (undefined) at park time
+  // — an approved write with no content would create/truncate the file to zero
+  // bytes (audit finding 15). An explicit empty string is allowed (a deliberate
+  // "make an empty file").
+  if (verb === "write-file" && args.content === undefined) {
+    refuse("I need the file's contents before I can write it — what should go in it?");
+    return;
+  }
+
+  // Provenance: content/target derived from a prior tool result?
+  const derived =
+    args.derived === true ||
+    flags.includes("--from-tool-output") ||
+    flags.includes("--derived");
+
+  const entry = VERB_TABLE[verb];
+
+  // DEFAULT-DENY: unclassified verb → confirm (never silent execution). Build
+  // the payload through the shared builder so args can't override the verb and a
+  // Swift system verb keeps its {action:"system",verb} shape (audit finding 14).
+  if (!entry) {
+    await fileConfirmAction(
+      "hands",
+      `run the unrecognized action "${verb}"`,
+      buildHandsActionPayload(verb, args)
+    );
+    return;
+  }
+
+  // INJECTION RULE: a tool-output-derived action is forced to confirm even if
+  // the table says safe. Untrusted tool output must never drive an action on
+  // its own.
+  const forcedConfirm = derived;
+
+  // SECURITY (QA follow-up, 2026-07-09): openUrl is reachable TWO ways — the
+  // direct `openUrl` verb AND the generic `system` verb with {verb:"openUrl"}
+  // in its args (the pre-existing, undocumented "escape hatch" from audit
+  // finding 7) — and both were safe-tier with no confirm. The injection rule
+  // CANNOT catch a prompt-injected model driving this: it relies on the model
+  // self-declaring --from-tool-output, which an attacker's injected instruction
+  // has no reason to do. NSWorkspace.open on the Swift side is unrestricted, so
+  // an arbitrary `http://evil/?d=<exfiltrated-data>` is a real, irreversible
+  // side effect (a GET that can carry data out) with zero human gate. ONE choke
+  // point catches BOTH paths, checked before either can be treated as safe: a
+  // URL only stays safe-tier when it targets a local console (this machine's
+  // own http(s) servers — 127.0.0.1/localhost, the same hosts the project-
+  // console alias table serves); every other URL — any other host, file://, a
+  // custom scheme — is filed as a confirm with the FULL url in the parked
+  // description so the human sees exactly what would open before saying yes.
+  const openUrlTarget =
+    verb === "openUrl"
+      ? args.url
+      : verb === "system" && args.verb === "openUrl"
+        ? args.url
+        : undefined;
+  if (typeof openUrlTarget === "string" && !isLocalConsoleUrl(openUrlTarget)) {
+    const description =
+      (forcedConfirm ? "[from something you read] " : "") + `open ${openUrlTarget}`;
+    await fileConfirmAction(
+      "hands",
+      description,
+      buildHandsActionPayload(verb, args)
+    );
+    return;
+  }
+
+  if (entry.tier === "safe" && !forcedConfirm) {
+    const payload =
+      entry.target === "hands" ? buildHandsActionPayload(verb, args) : args;
+    await performSafe(verb, entry, payload);
+    return;
+  }
+
+  // Confirm-tier (or safe verb forced by the injection rule).
+  const description =
+    (forcedConfirm ? "[from something you read] " : "") + entry.describe(args);
+
+  const target = entry.target;
+  // Same builder as the safe path so a confirm-tier or injection-forced hands
+  // verb dispatches identically to what its description promised (audit finding
+  // 12: a --from-tool-output-forced `timer` used to file a flat {action:"timer"}
+  // that 400s after approval instead of the {action:"system",verb:"timer"} shape).
+  const payload = target === "hands" ? buildHandsActionPayload(verb, args) : args;
+
+  // A write-file whose target is already inside the write jail doesn't need the
+  // shim at all — tell the model to use its Write tool instead of confirming.
+  if (verb === "write-file" && args.path && isInDirectWriteDir(args.path)) {
+    out(
+      `${args.path} is inside your write area — just use your Write tool directly, no confirmation needed.`
+    );
+    return;
+  }
+
+  await fileConfirmAction(target, description, payload);
+}
+
+/** SystemActions verbs that ride under action:"system" with a `verb` field. */
+const SYSTEM_VERBS = new Set([
+  "timer",
+  "volume",
+  "mute",
+  "mediaPlayPause",
+  "mediaNext",
+  "mediaPrev",
+  "openApp",
+  "reminder",
+  "notify",
+  // Supported by SystemActions.run on the Swift side, previously unmapped here.
+  "openUrl",
+  "dnd",
+  "runShortcut",
+]);
+
+/**
+ * Build the Hands /act payload for a verb the SAME way on every path (safe,
+ * confirm-tier hands, and default-deny) so an approved action can never dispatch
+ * differently from what was described (audit findings 8/12/14/22):
+ *   - `system`          → {action:"system", ...args}
+ *   - a SYSTEM_VERBS verb→ {action:"system", verb, ...args} (dnd/openUrl/timer/…)
+ *   - anything else      → {action:<verb>, ...args}
+ * args are spread FIRST and the action/verb written AFTER, so an args JSON that
+ * carries its own "action" (or "verb") key can NEVER override the approved verb
+ * — the human approves one action and exactly that action fires.
+ */
+function buildHandsActionPayload(verb, args) {
+  if (verb === "system") return { ...args, action: "system" };
+  if (SYSTEM_VERBS.has(verb)) return { ...args, action: "system", verb };
+  return { ...args, action: verb };
+}
+
+/**
+ * True iff `urlString` targets a local console — this machine's own http(s)
+ * server on 127.0.0.1/localhost, the same hosts the SystemActions project-
+ * console alias table serves (vidi-chat and any operator-defined local consoles,
+ * nightshift, …, always on a local port). Anything else — any other host,
+ * file://, a custom scheme, or an unparseable string — is NOT safe-tier: an
+ * arbitrary external URL is a real, irreversible side effect (a GET that can
+ * exfiltrate data via query params) and must go through a confirm. Exact
+ * hostname match only (no startsWith) so "localhost.evil.com" or
+ * "http://localhost@evil.com" (whose real host is "evil.com") can't sneak in.
+ */
+function isLocalConsoleUrl(urlString) {
+  let parsed;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  return parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+}
+
+/**
+ * Expand a leading "~"/"~user" to an absolute home path. Re-implemented inline
+ * (not imported from lib/expand-tilde.ts) because this shim is deliberately
+ * dependency-free .mjs-style Node so act mode's `Bash(vidi-act *)` can run it.
+ */
+function expandTilde(inputPath) {
+  const home = process.env.HOME || "";
+  if (inputPath === "~") return home || inputPath;
+  if (inputPath.startsWith("~/")) return (home || "~") + inputPath.slice(1);
+  if (inputPath.startsWith("~")) {
+    const firstSlashIndex = inputPath.indexOf("/");
+    const username =
+      firstSlashIndex === -1 ? inputPath.slice(1) : inputPath.slice(1, firstSlashIndex);
+    const remainder = firstSlashIndex === -1 ? "" : inputPath.slice(firstSlashIndex);
+    if (!username || !home) return inputPath;
+    return path.join(path.dirname(home), username) + remainder;
+  }
+  return inputPath;
+}
+
+main().catch((e) => refuse(e?.message || String(e)));

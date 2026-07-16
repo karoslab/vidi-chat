@@ -1,0 +1,10 @@
+{
+  "_comment": "Ops portfolio for the Standing Report (lib/standing-report.ts). Copy this file, edit the values, and point VIDI_OPS_CONFIG at it (absolute path) to enable service / deploy-verdict / nightshift probes. With VIDI_OPS_CONFIG unset (or the file missing/corrupt), the report degrades honestly to 'no services configured' / 'not configured' — never an error. Path fields are absolute-or-workspace-relative: a relative value is resolved under WORKSPACE_ROOT. Values below are examples only.",
+  "services": [
+    { "name": "app", "url": "http://127.0.0.1:3000/" },
+    { "name": "api", "url": "http://127.0.0.1:3001/health" },
+    { "name": "nightshift-console", "url": "http://127.0.0.1:4184/api/health" }
+  ],
+  "deployVerdictsDb": null,
+  "nightshiftDir": null
+}
