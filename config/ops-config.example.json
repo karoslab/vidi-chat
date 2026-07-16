@@ -5,6 +5,6 @@
     { "name": "api", "url": "http://127.0.0.1:3001/health" },
     { "name": "nightshift-console", "url": "http://127.0.0.1:4184/api/health" }
   ],
-  "deployVerdictsDb": null,
+  "deployGuardDb": null,
   "nightshiftDir": null
 }

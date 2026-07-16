@@ -85,7 +85,7 @@ for (const phrase of [
 for (const phrase of [
   "can you tell me what's my setup for the new project", // trailing extra intent
   "I was checking your memory folder yesterday and it was fine", // narrative
-  "are you logged in to the release gate console right now", // extra object
+  "are you logged in to the deploy guard console right now", // extra object
   "explain how the connection is down affects my turns", // embedded
   "what's turned on in the living room", // different domain
   "check yourself before you wreck yourself", // idiom, extra words

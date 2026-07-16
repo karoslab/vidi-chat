@@ -142,7 +142,7 @@ export function requireReadAuth(req: Request): Response | null {
  * Write-route gate for the state-changing / capability-granting POST surface
  * (P8 finding 3 — the P7 re-audit's durable RCE fix). /api/chat and /api/loop
  * drive a write-capable act-mode agent; /api/user-config POST and /api/history
- * POST persist state the agent later reads (config, brain-indexed threads).
+ * POST persist state the agent later reads (config, gbrain-ingested threads).
  * These routes previously trusted sameOriginOk() alone — but once `tailscale
  * serve` proxies the tailnet, a raw-TCP peer forges a loopback Host with no
  * Origin and passes sameOriginOk(), re-opening the act-mode RCE / brain-poison

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { dataPath } from "../data-dir.ts";
 import { appendJournal } from "../journal.ts";
+import { openSession, closeSession } from "../hunk-attribution.ts";
 import { memoryDigest } from "../memory.ts";
 import { createThread, getThread, updateThread, withTurnLock } from "../store.ts";
 import { computeFingerprint, shouldResumeSession } from "../session-fingerprint.ts";
@@ -586,6 +587,11 @@ export function prompt(id: string, text: string): {
   agent.turns++;
   const abort = new AbortController();
   agent.abort = abort;
+  // Open the session window for hunk attribution: only act-mode agents edit
+  // files, and the boundary snapshot is taken against the vidi-chat repo (cwd)
+  // now so every file this turn changes is attributed to this agent. closeSession
+  // in runTurn's finally is the capture boundary. See lib/hunk-attribution.ts.
+  if (agent.mode === "act") openSession(agent.id, Date.now(), process.cwd());
   emit({ kind: "update", agent: toPublic(agent) });
   void runTurn(agent, text, abort);
   return { ok: true, agent: toPublic(agent) };
@@ -733,6 +739,10 @@ async function runTurn(agent: AgentRuntime, text: string, abort: AbortController
     });
     await reportBackToOrigin(agent, fleetErrorReport(agent.name, e?.message));
   } finally {
+    // Close the hunk-attribution window: this is the boundary-diff capture, so
+    // every file changed since prompt()'s snapshot lands on the journal as an
+    // attributed FileChange for this agent. Mirrors the openSession gate.
+    if (agent.mode === "act") closeSession(agent.id, Date.now());
     // Only clear if this run still owns the slot (close() may have replaced it).
     if (agent.abort === abort) agent.abort = undefined;
     if (state.agents.get(agent.id) === agent) {

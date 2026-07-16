@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   const unauthorized = requireReadAuth(req);
   if (unauthorized) return unauthorized;
   const state = await computeJourney();
-  // The steps speak as the install's persona ("Vidi is open and running").
+  // The steps speak as the install's persona ("Anna is open and running").
   return Response.json(personaCopyDeep(state));
 }
 

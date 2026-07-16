@@ -73,7 +73,15 @@ const PERSONA_FILE = path.join(REPO_ROOT, "VIDI_PERSONA.md");
 // read the generic persona, falling back to the owner file only if the
 // customer file is missing from a stale payload.
 const PERSONA_FILE_CUSTOMER = path.join(REPO_ROOT, "VIDI_PERSONA_CUSTOMER.md");
+// Owner override: the tracked VIDI_PERSONA.md ships neutral (OSS-scrub — no
+// owner bio/knowledge-manifest in source). VIDI_PERSONA_FILE points at a local
+// untracked persona (e.g. VIDI_PERSONA.local.md) so the owner's full persona is
+// restored at runtime without any owner-specific text in the mirror. See CLAUDE.md.
+const PERSONA_FILE_OVERRIDE = process.env.VIDI_PERSONA_FILE
+  ? path.resolve(process.env.VIDI_PERSONA_FILE)
+  : null;
 function personaFile(): string {
+  if (PERSONA_FILE_OVERRIDE && existsSync(PERSONA_FILE_OVERRIDE)) return PERSONA_FILE_OVERRIDE;
   if (!isOwner() && existsSync(PERSONA_FILE_CUSTOMER)) return PERSONA_FILE_CUSTOMER;
   return PERSONA_FILE;
 }

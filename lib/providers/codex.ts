@@ -153,7 +153,7 @@ export const codexProvider: BrainProvider = {
       } catch {
         /* persona file missing — proceed without it */
       }
-      // standing rules (lib/user-rules.ts) prepend the system block
+      // the owner's standing rules (lib/user-rules.ts) prepend the system block
       // for EVERY provider — same block in claude.ts and grok.ts — so they
       // apply regardless of which model this turn runs on.
       const system = [userRulesBlock(), persona, args.extraSystemText]

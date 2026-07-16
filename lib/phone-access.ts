@@ -2,12 +2,12 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 
 /**
- * Phone access (Journey Stage 6) — the readiness model behind the
+ * "Anna on your phone" (Journey Stage 6) — the readiness model behind the
  * self-serve phone-browser path.
  *
- * The customer runs everything on their own devices and their own free
- * Tailscale account (their Mac + their phone); they are never on anyone
- * else's private connection. This module only READS local state to answer one question per
+ * The customer runs everything on HIS OWN devices and HIS OWN free Tailscale
+ * account (his Mac + his iPhone); he is never on anyone else's private
+ * connection. This module only READS local state to answer one question per
  * field: "is the piece that makes the phone work actually true right now?". It
  * never changes the Mac's Tailscale state — turning the connection on is the
  * Vidi Helper's job (vidi-launcher menu.sh), and pairing is the existing

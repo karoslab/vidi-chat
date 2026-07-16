@@ -53,7 +53,7 @@ const FIELD_META: Array<{ key: string; label: string; help: string; placeholder:
     key: "brainDirName",
     label: "Your memory folder",
     help: "The folder that holds everything I remember for you.",
-    placeholder: "Brain",
+    placeholder: "MyWiki",
   },
 ];
 

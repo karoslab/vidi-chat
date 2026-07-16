@@ -178,13 +178,6 @@ function isFresh(rec: PendingRecord, now: number): boolean {
  */
 function isRunnable(rec: PendingRecord): boolean {
   if (Object.prototype.hasOwnProperty.call(rec, "payload")) {
-    // Registry actions are durable on disk. Executors load asynchronously
-    // (ensureExecutors) after this module initializes. Requiring registry.has
-    // while still loading races module-init and flaked CI (pendingView/
-    // hasPending returned null immediately after fileConfirm). Once the
-    // registry is loaded, unknown kinds fail safe (not runnable).
-    // confirmPending awaits ensureExecutors() before execute.
-    if (!executorsLoaded) return true;
     return registry.has(rec.kind);
   }
   return closureExecutors.has(rec.pendingId);

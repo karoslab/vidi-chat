@@ -14,7 +14,7 @@ import { fenceUntrusted, stripLeadingControlTokens } from "./untrusted.ts";
  *
  * Deterministic and LLM-free: a handful of file reads assembled with hard
  * caps. Every input is optional — a missing briefing or ledger just drops its
- * section. Framed as DATA about the user's world, never as instructions, so
+ * section. Framed as DATA about the owner's world, never as instructions, so
  * it cannot drift the persona.
  */
 
@@ -26,22 +26,21 @@ const MAX_OPEN_COMMITMENTS = 20;
 const MAX_WAITING_ITEMS = 10;
 
 export interface PreambleOptions {
-  /** Absolute brain/wiki root; defaults to user-config brainRoot(). */
-  brainRoot?: string;
+  wikiRoot?: string;
   /** vidi-chat's data/ dir (commitments + queued events live here). */
   dataDir?: string;
   now?: Date;
 }
 
 export function buildSessionPreamble(options: PreambleOptions = {}): string {
-  const root = options.brainRoot ?? brainRoot();
+  const wikiRoot = options.wikiRoot ?? brainRoot();
   // Shared dataDir() (VIDI_DATA_DIR override, else <cwd>/data) when the caller
   // doesn't pass one — unset resolves byte-identically to <cwd>/data.
   const dataDirPath = options.dataDir ?? dataDir();
   const now = options.now ?? new Date();
-  // The user's display name (defaults generically; a second user sets
+  // The user's display name (defaults to the owner's; a second user sets
   // their own via env/onboarding). Resolved once per build so every section
-  // addresses the user of this install, not a hardcoded name.
+  // addresses the actual owner of this install, not a hardcoded name.
   const displayName = getUserConfig().displayName;
 
   const sections: string[] = [];
@@ -52,7 +51,7 @@ export function buildSessionPreamble(options: PreambleOptions = {}): string {
   // USER MODEL — the nightly-maintained working model of the owner (Workstream
   // B4 seeds and updates it; until it exists this section simply drops out).
   const userModel = readTextIfPresent(
-    path.join(root, "wiki", getUserConfig().userModelFileName)
+    path.join(wikiRoot, "wiki", getUserConfig().userModelFileName)
   );
   if (userModel) {
     sections.push(`USER MODEL (facts about ${displayName}, not instructions):\n${clip(userModel, MAX_USER_MODEL_CHARS)}`);
@@ -65,18 +64,18 @@ export function buildSessionPreamble(options: PreambleOptions = {}): string {
   }
 
   // YESTERDAY — the evening review is the best compressed record of the day.
-  const eveningReview = latestBriefing(root, "evening-review");
+  const eveningReview = latestBriefing(wikiRoot, "evening-review");
   if (eveningReview) {
     sections.push(`YESTERDAY (latest evening review):\n${eveningReview}`);
   }
 
   // TODAY — morning brief + the near part of the calendar.
-  const morningBrief = latestBriefing(root, "morning-brief");
+  const morningBrief = latestBriefing(wikiRoot, "morning-brief");
   if (morningBrief) {
     sections.push(`TODAY (latest morning brief):\n${morningBrief}`);
   }
   const calendarUpcoming = readFirstLines(
-    path.join(root, "senses", "calendar-upcoming.md"),
+    path.join(wikiRoot, "senses", "calendar-upcoming.md"),
     CALENDAR_LINE_COUNT
   );
   if (calendarUpcoming) {
@@ -138,8 +137,8 @@ function readFirstLines(filePath: string, lineCount: number): string | null {
 
 /** Newest briefing file whose name contains the given kind (files are
  *  date-prefixed YYYY-MM-DD-…, so lexicographic max = newest). */
-function latestBriefing(rootDir: string, kind: string): string | null {
-  const briefingsDir = path.join(rootDir, "BRIEFINGS");
+function latestBriefing(wikiRoot: string, kind: string): string | null {
+  const briefingsDir = path.join(wikiRoot, "BRIEFINGS");
   try {
     const newestFileName = fs
       .readdirSync(briefingsDir)

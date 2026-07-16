@@ -25,7 +25,7 @@ export async function register() {
     } else {
       console.error(
         `[boot] WORKSPACE_ROOT MISRESOLVED: "${WORKSPACE_ROOT}" (via ${WORKSPACE_ROOT_RESOLUTION.via}) — ` +
-          "no candidate contained vidi-chat/package.json; Brain/gbrain/act-mode paths will be wrong. " +
+          "no candidate contained vidi-chat/package.json; MyWiki/gbrain/act-mode paths will be wrong. " +
           "Set VIDI_WORKSPACE_ROOT or fix the service WorkingDirectory."
       );
     }

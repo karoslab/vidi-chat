@@ -55,7 +55,7 @@ test("expandConfigDir expands a leading ~ and passes null through", () => {
 });
 
 test("a disabled account stays in the registry but is skipped everywhere", () => {
-  // Disable without removing so labels/order survive a temporary outage.
+  // 2026-07-09: main's subscription lapsed — disable without removing.
   const registryPath = path.join(process.cwd(), "data", "accounts.json");
   fs.writeFileSync(
     registryPath,

@@ -14,7 +14,7 @@ process.env.VIDI_OWNER = "1";
  * executor checks the GRANTED scopes; if the write scope is missing it returns
  * an honest, speakable failure ("re-authorize Google") instead of attempting
  * the write and never prompts for consent from the server. The owner grants the
- * scope out-of-band; the ~5-min cache picks it up.
+ * scope out-of-band (his K5 step); the ~5-min cache picks it up.
  *
  * We drive the scope answer with VIDI_GWS_SCOPES_OVERRIDE so the test never
  * touches the real gws CLI or the network.
@@ -44,7 +44,7 @@ const { fileConfirm, confirmPending, cancelPending } = await import(
 );
 
 // The reauth message now addresses the configured user (the resolved
-// displayName); a personal checklist tail was dropped as
+// displayName); the owner-specific "on his morning list" tail was dropped as
 // part of de-owner-ifying the prompt/spoken strings for a second user. The
 // expected name is sourced from the config default so this never restates the
 // owner's literal name.

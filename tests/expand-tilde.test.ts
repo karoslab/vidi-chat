@@ -11,10 +11,10 @@ const HOME = process.env.HOME || os.homedir();
 
 test("homeRelative collapses the home dir to ~ for display", () => {
   assert.equal(homeRelative(HOME), "~");
-  assert.equal(homeRelative(path.join(HOME, "Brain")), "~" + path.sep + "Brain");
+  assert.equal(homeRelative(path.join(HOME, "MyWiki")), "~" + path.sep + "MyWiki");
   assert.equal(
-    homeRelative(path.join(HOME, "workspace", "vidi-chat")),
-    "~" + path.sep + path.join("workspace", "vidi-chat")
+    homeRelative(path.join(HOME, "projects", "vidi-chat")),
+    "~" + path.sep + path.join("projects", "vidi-chat")
   );
 });
 

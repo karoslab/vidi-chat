@@ -155,8 +155,8 @@ registerExecutor("write-file", async (payload) => {
           ? p.contents
           : "";
   if (!filePath) throw new Error("no path");
-  // Phase 4a — H4: jail the target. Even an approved confirm (token+nonce gated;
-  // B1 defense-in-depth) can only write inside {workspace, Desktop, Downloads},
+  // Phase 4a — H4: jail the target. Even a FORGED confirm (B1 confirm-route
+  // auth is deferred) can only write inside {workspace, Desktop, Downloads},
   // never a SECRET_PATHS credential/token or a $HOME dotfile. A refusal is a
   // spoken plain-language "no", NOT a throw (a throw would surface as the
   // generic "that didn't go through").

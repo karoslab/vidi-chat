@@ -18,7 +18,7 @@ import { getThread, listThreads } from "./store.ts";
  * This mirrors the `registerExecutor(kind, fn)` discipline of lib/confirm.ts,
  * but is a DELIBERATELY SEPARATE, SIBLING registry (§2 design rule): a fix-it
  * command can never be filed as a generic confirm action and vice-versa, so
- * this channel doesn't widen the B1 confirm path (still token-gated). Unlike confirm.ts
+ * this channel doesn't widen the forgeable B1 confirm path. Unlike confirm.ts
  * there is NO pending slot and NO approval here — every command in Phase A is
  * T0 read-only (§3.1), safe to run on match because the worst case is speaking
  * a status line.

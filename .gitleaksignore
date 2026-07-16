@@ -1,0 +1,6 @@
+tests/child-env.test.ts:generic-api-key:72
+tests/journal-redaction.test.ts:curl-auth-header:23
+tests/redact.test.ts:generic-api-key:47
+tests/secret-scan.test.ts:generic-api-key:35
+tests/secret-scan.test.ts:generic-api-key:39
+tests/memory-controls.test.ts:private-key:146

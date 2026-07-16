@@ -4,7 +4,7 @@ import type { AgentPublic } from "./agents/manager";
 
 /**
  * Crew Cam overlay data — the SANITIZED, read-only projection of the fleet for
- * an OBS browser source for optional live overlays. Security-critical:
+ * an OBS browser source on the owner's build-in-public stream. Security-critical:
  * this is shown on a public stream, so it must NEVER leak agent feed text
  * (which can contain prompts, file paths, secrets). buildOverlay whitelists
  * fields explicitly — it never spreads an agent object — so a new field on the

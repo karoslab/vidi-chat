@@ -38,7 +38,7 @@ const pairingCodeFile = () => dataPath("phone-pairing-code");
 const cookieSecretFile = () => dataPath("phone-browser-cookie");
 // Non-secret witness that a phone actually completed pairing at least once (see
 // markPairingConsumed / lastPairingConsumedAtMs). Written on every successful
-// consume; read by the Stage-6 phone-access journey verify() as the
+// consume; read by the Stage-6 "Anna on your phone" journey verify() as the
 // mechanical proof a phone browser really connected — not just that a code was
 // minted. Bare epoch-ms integer, not a secret, so it needs no redact entry.
 const pairingConsumedFile = () => dataPath("phone-pairing-last");

@@ -1,10 +1,10 @@
 /**
  * Secret redaction for on-disk writes that can leak into egress paths
  * (Tier-2 S-redact). The journal (data/journal.jsonl), the shared fleet memory
- * (data/memory.jsonl, ingested into gbrain), and the Brain notes rememberNote
+ * (data/memory.jsonl, ingested into gbrain), and the MyWiki notes rememberNote
  * writes all persist model/tool-derived text that CAN carry a secret — a tool
  * result that echoed an Authorization header, a command the model logged with a
- * key in it, or one of vidi's own bearer tokens. gbrain then syncs Brain, and
+ * key in it, or one of vidi's own bearer tokens. gbrain then syncs MyWiki, and
  * the journal is readable by the browser. Scrub known secret shapes before the
  * write so a secret never lands where it can be exfiltrated or synced out.
  *

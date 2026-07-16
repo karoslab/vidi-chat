@@ -17,7 +17,7 @@ export const fetchCache = "force-no-store";
  * GET → swarm pipeline state for the Fleet canvas.
  *
  * The Fleet canvas is an owner-only observability surface. It reads the state
- * files produced by a separate swarm orchestrator (an external ops tool,
+ * files produced by a separate swarm orchestrator (an external `ops` repo,
  * not shipped here) under `<workspace-root>/ops/swarm/state`, one JSON per repo,
  * plus the tail of each worker's live activity log, so the canvas can show the
  * workers actually working — tool call by tool call. Read-only observability:

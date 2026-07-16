@@ -15,7 +15,7 @@ import { ASSISTANT_NAME } from "./assistant-identity.ts";
  *
  * This is the "de-hardcode" seam: any user runs the same app pointed at their
  * own name and brain without touching source. The built-in defaults are NEUTRAL
- * and machine-independent (a generic "the user", a generic Brain directory, and
+ * and machine-independent (a generic "the user", a generic MyWiki brain, and
  * binary/home paths derived from os.homedir()), so nothing owner-specific ships
  * in the public source. Each field resolves in this order (first wins):
  *
@@ -64,7 +64,7 @@ const HOME = os.homedir();
 
 const DEFAULTS: UserConfig = {
   displayName: "the user",
-  brainDirName: "Brain",
+  brainDirName: "MyWiki",
   userModelFileName: "user-model.md",
   gbrainBin: path.join(HOME, ".bun", "bin", "gbrain"),
   claudeBin: path.join(HOME, ".local", "bin", "claude"),
@@ -132,7 +132,7 @@ export function getUserConfig(): UserConfig {
   if (cached) return cached;
   const fileOverrides = readJsonFileOverrides();
   // The built-in default identity is now NEUTRAL for everyone ("the user",
-  // Brain), so no owner name can ever leak to an install that hasn't set its
+  // MyWiki), so no owner name can ever leak to an install that hasn't set its
   // own — the 2026-07-12 demo finding (the demo user greeted by the owner's
   // name) is structurally impossible. The owner restores their real name/brain
   // through the env/file override seam (VIDI_USER_NAME / VIDI_BRAIN_DIR).

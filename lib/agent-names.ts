@@ -4,7 +4,8 @@
  * (the fleet manager already stores agent.name) and are used everywhere the
  * agent is shown.
  *
- * The Kannada / Indian-mythology stack is rendered with CRAFT, per an explicit no-slop rule: the Kannada letters are the hero (correct spelling,
+ * The Kannada / Indian-mythology stack is rendered with CRAFT, per the owner's
+ * explicit no-slop rule: the Kannada letters are the hero (correct spelling,
  * never distorted or decorative-only), each carries a Roman transliteration for
  * addressing/STT and a one-line meaning. This is a picker + persistence, not a
  * theming engine.
@@ -93,7 +94,7 @@ export function allCuratedNames(): string[] {
 
 /**
  * The DEFAULT stack a user's helpers draw their names from when she hasn't
- * picked one — the Kannada / Indian-mythology stack, the hero set (the install's
+ * picked one — the Kannada / Indian-mythology stack, the hero set (the owner's
  * ruling: it's the default, pickable in onboarding and the Canvas picker).
  */
 export const DEFAULT_AGENT_NAME_STACK_ID = "kannada";

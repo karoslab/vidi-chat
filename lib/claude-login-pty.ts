@@ -232,15 +232,8 @@ function ptyInvocation(ptyBin: string, cmd: string, argv: string[]): string[] {
     const spawnLine = [cmd, ...argv].map(shQuote).join(" ");
     return ["-c", `set timeout -1; spawn ${spawnLine}; expect eof`];
   }
-  // macOS `script` takes the command as trailing args:
-  //   script -q /dev/null <cmd> <args...>
-  // util-linux `script` (Linux CI) wants -c "cmd args" and the log file last:
-  //   script -q -c "<cmd> <args...>" /dev/null
-  // Without this, every PTY login test fails on Linux (spawned=false).
-  if (process.platform === "linux") {
-    const line = [cmd, ...argv].map(shQuote).join(" ");
-    return ["-q", "-c", line, "/dev/null"];
-  }
+  // /usr/bin/script: -q suppresses the "Script started/done" banner, /dev/null
+  // discards the typescript file; everything after is the command + args.
   return ["-q", "/dev/null", cmd, ...argv];
 }
 

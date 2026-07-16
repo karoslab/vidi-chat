@@ -11,7 +11,7 @@
     "dev": "next dev -H 127.0.0.1 -p 4183",
     "build": "next build",
     "build:prod": "NEXT_DIST_DIR=.next-build next build",
-    "deploy:kickstart": "launchctl kickstart -k gui/$(id -u)/com.vidi.vidichat",
+    "deploy:kickstart": "launchctl kickstart -k gui/$(id -u)/${VIDI_SERVICE_LABEL:-com.vidi.vidichat}",
     "start": "next start -H 127.0.0.1 -p 4183",
     "test": "env -u VIDI_DATA_DIR VIDI_TEST=1 node --test tests/*.test.ts"
   },

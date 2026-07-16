@@ -37,7 +37,7 @@
 #
 set -euo pipefail
 
-SERVICE_LABEL="com.vidi.vidichat"
+SERVICE_LABEL="${VIDI_SERVICE_LABEL:-com.vidi.vidichat}"
 PORT=4183
 MIN_NODE_MAJOR=22
 MIN_NODE_MINOR=18

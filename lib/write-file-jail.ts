@@ -7,11 +7,12 @@ import { expandTilde } from "./expand-tilde.ts";
 /**
  * Phase 4a — H4. The path jail for the `write-file` confirm executor.
  *
- * Background (B1+B2 in the threat model): confirm park/approve are now
- * control/session-token gated with a per-command nonce (see THREAT_MODEL B1).
- * This module is the *payload* backstop for write-file: even a compromised
- * local principal that can approve may only write inside the jail, never a
- * credential/dotfile/system path.
+ * Background (B1+B2 in the threat model): the confirm queue's approval is
+ * forgeable over an unauthed local route, and `write-file` used to write any
+ * absolute path — dotfiles, ~/.ssh, even the SECRET_PATHS the CLI denylist
+ * protects. B1 confirm-route auth is DEFERRED (needs Swift-app coordination),
+ * so this closes the payload half: even a forged confirm can only write inside
+ * the write jail, never a credential/dotfile/system path.
  *
  * The rule (a target is refused unless ALL hold):
  *   (a) it resolves INSIDE {workspace root, Desktop, Downloads} — the same

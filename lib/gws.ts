@@ -13,10 +13,10 @@ import { execFile } from "node:child_process";
  * status` → `scopes[]`). If the required write scope is missing, we DON'T try
  * the write and DON'T prompt for consent from the server — instead the confirm
  * executor returns an honest, speakable failure and the route says it out loud:
- * "I need the user to re-authorize Google first."
+ * "I need the owner to re-authorize Google first — it's on his morning list."
  *
  * Scope status is cached ~5 min so a rapid burst of confirms doesn't shell out
- * repeatedly. Re-authorization is out-of-band (operator reconnects Google); the
+ * repeatedly. the owner re-authorizes out-of-band (his K5 checklist step); the
  * cache expiry means a fresh grant is picked up within 5 minutes with no
  * restart, and a restart picks it up immediately.
  */
@@ -115,7 +115,7 @@ export async function hasScope(
  * every value. clap (the gws CLI's parser) rejects an option value passed as a
  * SEPARATE argv token when that token starts with "-" — so a model-natural body
  * that begins with a hyphen (a bulleted "- milk\n- rent", a "- Vidi" signature)
- * or a "-urgent" subject crashed the entire send with exit 3, AFTER the operator had
+ * or a "-urgent" subject crashed the entire send with exit 3, AFTER the owner had
  * already spoken confirm (audit finding 0). The `--flag=value` form is
  * hyphen-safe (verified: `--body=- milk` dry-runs exit 0; the separate-token
  * form exits 3). cc/bcc are forwarded only when present — they were silently

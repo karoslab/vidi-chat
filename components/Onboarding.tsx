@@ -365,7 +365,7 @@ export default function Onboarding({
       // Their memory folder takes THEIR name (e.g. "AnnaWiki"), never a shipped
       // default, and only before the folder has really become theirs.
       const nameSlug = name.trim().replace(/[^A-Za-z0-9]+/g, "");
-      const folderIsDefault = ["", "Brain"].includes(brainDirCurrent);
+      const folderIsDefault = ["", "MyWiki"].includes(brainDirCurrent);
       if (!brainDirLocked && folderIsDefault && nameSlug) {
         identity.brainDirName = `${nameSlug[0].toUpperCase()}${nameSlug.slice(1)}Wiki`;
       }

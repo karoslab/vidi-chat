@@ -90,7 +90,7 @@ test("neutral defaults are machine-independent — no absolute owner literals, d
     const cfg = getUserConfig();
     // Identity defaults are generic, not a real person's name/brain/model file.
     assert.equal(cfg.displayName, "the user");
-    assert.equal(cfg.brainDirName, "Brain");
+    assert.equal(cfg.brainDirName, "MyWiki");
     assert.equal(cfg.userModelFileName, "user-model.md");
     // Machine paths derive from the CURRENT process user's home, so they carry
     // no hardcoded /Users/<someone> literal and are correct on any machine.
@@ -264,7 +264,7 @@ test("writeEditableConfig clears a field back to default when set empty", async 
 test("validateBrainDirName accepts a plain segment and rejects traversal/absolute/dot", async () => {
   const { validateBrainDirName } = await importUserConfig("validate");
   // Valid single segments → null (no error).
-  assert.equal(validateBrainDirName("Brain"), null);
+  assert.equal(validateBrainDirName("MyWiki"), null);
   assert.equal(validateBrainDirName("MayaWiki"), null);
   assert.equal(validateBrainDirName("  Spaces-Trimmed  "), null);
   // Invalid → a plain-language non-empty string.
@@ -580,7 +580,7 @@ test("a NON-owner install with no saved identity never says the owner name or br
     const { getUserConfig } = await importUserConfig("customer-defaults");
     const cfg = getUserConfig();
     assert.equal(cfg.displayName, "the user");
-    assert.equal(cfg.brainDirName, "Brain");
+    assert.equal(cfg.brainDirName, "MyWiki");
   } finally {
     if (backup) fs.writeFileSync(CONFIG_FILE, backup);
     process.env.VIDI_OWNER = "1";

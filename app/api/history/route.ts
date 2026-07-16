@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
  *
  * Exchanges land on one persistent thread titled "vision". It is an ARCHIVE
  * thread — never run through the CLI — but because it's an ordinary thread,
- * optional memory-ingest can ship it to Brain/gbrain on its cycle and it's
+ * brain-ingest ships it to MyWiki/gbrain on its existing cycle and it's
  * visible in the chat UI, all for free. Failures on the app side are
  * fire-and-forget: a dead backend must never break the vision chat itself.
  */
@@ -44,7 +44,7 @@ function findOrCreateVisionThread() {
 }
 
 export async function POST(req: NextRequest) {
-  // P8 finding 3: a persisted vision thread is ingested into gbrain/Brain,
+  // P8 finding 3: a persisted vision thread is ingested into gbrain/MyWiki,
   // which the agent later reads — a forged-loopback write is a brain-poison /
   // prompt-injection seed. Require a positive session/control token, not
   // sameOriginOk alone. NOTE: the native Swift vision poster must be rebuilt to

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 /**
- * Tier-2 (S-redact). Journal / shared-memory / Brain-note writes can carry a
+ * Tier-2 (S-redact). Journal / shared-memory / MyWiki-note writes can carry a
  * secret (a tool result that echoed an Authorization header, one of vidi's own
  * bearer tokens). redactSecrets() scrubs known secret shapes AND the machine's
  * own live tokens (read from data/) before the write. Assert both layers, the

@@ -6,7 +6,7 @@ import path from "node:path";
 
 // goals.ts resolves data/ off process.cwd() (goals.json + goal-events.jsonl),
 // so chdir into a fresh temp dir BEFORE importing — same isolation pattern as
-// policy.test.ts. The Brain mirror writes to an absolute path outside cwd; it
+// policy.test.ts. The MyWiki mirror writes to an absolute path outside cwd; it
 // fails open if that dir is unwritable, which is fine under test.
 process.chdir(fs.mkdtempSync(path.join(os.tmpdir(), "vidi-goals-test-")));
 

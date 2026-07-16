@@ -30,7 +30,7 @@ import { isOwner } from "./user-config.ts";
  *  is the personal/project-management channel, kept separate from ops noise. */
 const PUSH_DISCORD_CHANNEL = "pm";
 
-/** The optional Discord fallback: an external notify script path
+/** The optional Discord fallback: an external `ops/notify.py` sibling script
  *  (not shipped here), invoked as `python3 notify.py --channel <name> --text
  *  <msg>`; it reads its own bot token + channel map from the ops .env chain.
  *  Entirely optional — ntfy is the standalone default transport and works

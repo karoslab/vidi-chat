@@ -24,7 +24,7 @@ export interface MemoryEntry {
 const memoryFile = () => dataPath("memory.jsonl");
 
 export function remember(text: string, agent = "vidi", tags?: string[]): MemoryEntry {
-  // Tier-2 (S-redact): shared memory is ingested into gbrain (→ Brain sync),
+  // Tier-2 (S-redact): shared memory is ingested into gbrain (→ MyWiki sync),
   // so scrub secrets before they leave data/ on that path.
   const entry: MemoryEntry = {
     ts: Date.now(),

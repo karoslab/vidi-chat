@@ -88,7 +88,7 @@ test("loadOpsConfig returns an empty portfolio when VIDI_OPS_CONFIG is unset", (
   delete process.env.VIDI_OPS_CONFIG;
   const cfg = loadOpsConfig();
   assert.deepEqual(cfg.services, []);
-  assert.equal(cfg.deployVerdictsDb, null);
+  assert.equal(cfg.deployGuardDb, null);
   assert.equal(cfg.nightshiftDir, null);
 });
 
@@ -103,7 +103,7 @@ test("loadOpsConfig parses services and resolves paths (relative → under works
         { name: "svc-b", url: "http://localhost:9102/health" },
         { name: "bad", url: 123 }, // wrong type → dropped
       ],
-      deployVerdictsDb: "sub/dir/guard.db", // relative
+      deployGuardDb: "sub/dir/guard.db", // relative
       nightshiftDir: "/abs/nightshift", // absolute
     })
   );
@@ -114,7 +114,7 @@ test("loadOpsConfig parses services and resolves paths (relative → under works
       { name: "svc-a", url: "http://localhost:9101/" },
       { name: "svc-b", url: "http://localhost:9102/health" },
     ]);
-    assert.equal(cfg.deployVerdictsDb, path.join(WORKSPACE_ROOT, "sub/dir/guard.db"));
+    assert.equal(cfg.deployGuardDb, path.join(WORKSPACE_ROOT, "sub/dir/guard.db"));
     assert.equal(cfg.nightshiftDir, "/abs/nightshift");
   } finally {
     delete process.env.VIDI_OPS_CONFIG;
@@ -127,10 +127,10 @@ test("loadOpsConfig fails soft to an empty portfolio on a corrupt / missing file
   fs.writeFileSync(file, "{ not valid json ");
   process.env.VIDI_OPS_CONFIG = file;
   try {
-    assert.deepEqual(loadOpsConfig(), { services: [], deployVerdictsDb: null, nightshiftDir: null });
+    assert.deepEqual(loadOpsConfig(), { services: [], deployGuardDb: null, nightshiftDir: null });
     // A path that doesn't exist is equally fail-soft.
     process.env.VIDI_OPS_CONFIG = path.join(dir, "does-not-exist.json");
-    assert.deepEqual(loadOpsConfig(), { services: [], deployVerdictsDb: null, nightshiftDir: null });
+    assert.deepEqual(loadOpsConfig(), { services: [], deployGuardDb: null, nightshiftDir: null });
   } finally {
     delete process.env.VIDI_OPS_CONFIG;
   }
@@ -141,6 +141,6 @@ test("gatherStandingReport reports the honest 'not configured' lines with no ops
   setTailscaleBin("/nonexistent/definitely-no-tailscale-here"); // keep it network-free + deterministic
   const report = await gatherStandingReport();
   assert.match(report, /SERVICES: no services configured/);
-  assert.match(report, /DEPLOY VERDICTS \(latest per project\): deploy verdicts: not configured/);
+  assert.match(report, /DEPLOY GUARD \(latest verdict per project\): deploy guard: not configured/);
   assert.match(report, /NIGHTSHIFT LATEST: \(NightShift not configured\)/);
 });

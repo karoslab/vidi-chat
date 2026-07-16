@@ -6,19 +6,19 @@ import { getUserConfig } from "./user-config.ts";
 import { stripLeadingControlTokens } from "./untrusted.ts";
 
 /**
- * 48-hour recent buffer — the free bridge over slow long-term memory ingest.
+ * 48-hour recent buffer — the free bridge over the 6h brain-ingest gap.
  *
- * gbrain only knows what has been committed and synced into the brain index, so
+ * gbrain only knows what brain-ingest has committed and synced (every 6h), so
  * "vidi, remember X" followed minutes later by "what did I say about X?" found
  * nothing. This module answers from what hasn't reached the brain yet: fresh
- * Brain note files and the last two days of voice/vision conversation.
+ * MyWiki note files and the last two days of voice/vision conversation.
  * No LLM, no gbrain, no network — a few file reads and word overlap, <10ms.
  *
  * Fail-open like autoRecall: any error means "no recent context", never a
  * broken voice turn.
  */
 
-const BRAIN_NOTES_DIR = workspacePath(getUserConfig().brainDirName, "vidi", "notes");
+const KARWIKI_NOTES_DIR = workspacePath(getUserConfig().brainDirName, "vidi", "notes");
 const RECENT_WINDOW_MS = 48 * 60 * 60 * 1000;
 /** Conversation threads worth recalling from: the persistent voice thread and
  *  the vision archive thread (screenshot Q&A history posted by the Mac app). */
@@ -42,7 +42,7 @@ export interface RecentBufferOptions {
 
 /** Everything from the last 48h that gbrain may not have yet. */
 export function gatherRecentSources(options: RecentBufferOptions = {}): RecentSource[] {
-  const notesDir = options.notesDir ?? BRAIN_NOTES_DIR;
+  const notesDir = options.notesDir ?? KARWIKI_NOTES_DIR;
   const threadTitles = options.threadTitles ?? RECENT_THREAD_TITLES;
   const nowMs = options.nowMs ?? Date.now();
   const cutoffMs = nowMs - RECENT_WINDOW_MS;

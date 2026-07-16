@@ -6,11 +6,11 @@ import { dataDir, dataPath } from "./data-dir.ts";
 /**
  * Multi-account Claude registry. Each account maps to a `claude` CLI config
  * dir (CLAUDE_CONFIG_DIR); a null configDir means "don't set the var" — the
- * default account, today's behavior. When multiple accounts are registered,
- * exhausting a limit mid-turn can fail over to the next enabled account.
+ * default account, today's behavior. the owner has two Claude Max accounts; when
+ * one exhausts its Fable-5 limit mid-turn the provider fails over to the next.
  *
  * Registry lives in data/accounts.json (gitignored, like all of data/) and is
- * seeded on first read so a fresh install has a default account set. The active id is
+ * seeded on first read so a fresh install has both accounts. The active id is
  * a one-line data/active-account.json (same JSON-under-data idiom as
  * data/onboarded.json). Registry ORDER is the failover order.
  */
@@ -22,8 +22,9 @@ export interface Account {
   configDir: string | null;
   /**
    * true = keep the account in the registry but never spawn on it (rotation
-   * and active-resolution skip it). For temporarily unavailable subscriptions
-   * that should stay in the registry (labels/order preserved) until restored.
+   * and active-resolution skip it). For known-dead subscriptions that will
+   * come back — 2026-07-09: main's Max subscription lapsed; disabled without
+   * being removed until the resubscribe.
    */
   disabled?: boolean;
 }
@@ -35,7 +36,7 @@ const activeFile = () => dataPath("active-account.json");
 
 // A FRESH install seeds a generic default account — never a handle. The seed
 // only runs when data/accounts.json is missing/corrupt (loadAccounts below), so
-// an existing install (already holding its own labelled registry) is
+// an existing install (the owner's, already holding its own labelled registry) is
 // untouched; no migration is needed or wanted.
 const SEED: Account[] = [
   { id: "main", label: "Default account", configDir: null },

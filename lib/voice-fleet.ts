@@ -59,7 +59,7 @@ export async function handleFleetIntent(
   }
   if (intent.kind === "sentryStop") {
     const r = await handsAct({ action: "sentryStop" });
-    // Persist any audio transcript for optional long-term memory ingest — the watch is
+    // Persist any audio transcript for the brain-ingest job — the watch is
     // over, but what the video said becomes long-term memory.
     try {
       const t = await handsAct({ action: "sentryTranscript" });

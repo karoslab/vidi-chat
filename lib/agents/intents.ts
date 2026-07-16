@@ -126,7 +126,7 @@ export function matchFleetIntent(transcript: string): FleetIntent | null {
   // "remember this: …" — a deliberate note into long-term memory. Anchored on
   // LEADING note-taking phrases so questions like "do you remember when…"
   // fall through to a normal turn. Bare "remember" requires a colon/comma
-  // ("remember: …") so "remember when we shipped the app" stays a question.
+  // ("remember: …") so "remember when we shipped the game" stays a question.
   const remember = t.match(
     /^(?:remember (?:this|that)[:,]?|remember[:,]|don['’]?t forget[:,]?|note that|make a note[:,]?|note this down[:,]?)\s+(.+)$/
   );
@@ -143,7 +143,7 @@ export function matchFleetIntent(transcript: string): FleetIntent | null {
   // like "how do I set a goal in the app" or "what's your goal here" that isn't
   // in the exact command shape falls through to a normal turn.
   //
-  // New goal: "new goal: ship demo-app" / "set a goal to hit 90% coverage" /
+  // New goal: "new goal: ship the app" / "set a goal to hit 90% coverage" /
   // "your goal is keep the dashboard green". A colon after "new goal" is
   // optional; "set a goal (to|of|:)" needs the connective so "set a goal" alone
   // isn't an empty-title goal.
@@ -163,7 +163,7 @@ export function matchFleetIntent(transcript: string): FleetIntent | null {
     return { kind: "goalStatus" };
   }
   // Pause / resume / drop a named goal: "pause the goal coverage",
-  // "resume the demo-app goal", "drop the goal ship-demo". The verb+"goal"
+  // "resume the app goal", "drop the goal ship-app". The verb+"goal"
   // pairing is required (either order) so "pause the video" — a different
   // surface — never becomes a goal mutation. The captured name is resolved to a
   // real goal by the handler; no match there falls through to a normal turn.

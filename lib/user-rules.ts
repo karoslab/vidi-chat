@@ -4,7 +4,7 @@ import path from "node:path";
 import { dataPath } from "./data-dir.ts";
 
 /**
- * the user's STANDING RULES — global working conventions — injected into the
+ * the owner's STANDING RULES — his global working conventions — injected into the
  * system prompt of EVERY provider (Claude, Codex/ChatGPT, Grok) so they apply
  * regardless of which model a session runs on. This is the whole point: the same
  * rules text goes to all three providers (see the prepend call in each of
@@ -12,7 +12,7 @@ import { dataPath } from "./data-dir.ts";
  *
  * Two sources, concatenated in this order (both optional — a missing file is an
  * empty string, never an error):
- *   1. GLOBAL — ~/.claude/CLAUDE.md, the machine-wide Claude Code rules
+ *   1. GLOBAL — ~/.claude/CLAUDE.md, the owner's machine-wide Claude Code rules
  *      (interaction style, the "give me novice step-by-step" coaching rule, etc.).
  *      Resolved via os.homedir() so it's not a hardcoded /Users/... path.
  *   2. OVERLAY — data/USER_RULES.md, an optional per-install vidi-chat overlay,
@@ -27,7 +27,7 @@ import { dataPath } from "./data-dir.ts";
  * restart, but the steady state costs one stat per source per turn, not a read.
  */
 
-/** Global rules file: the machine-wide Claude Code conventions. */
+/** Global rules file: the owner's machine-wide Claude Code conventions. */
 const globalRulesFile = () => path.join(os.homedir(), ".claude", "CLAUDE.md");
 
 /** Optional per-install overlay, appended after the global file. */
@@ -37,7 +37,7 @@ const overlayRulesFile = () => dataPath("USER_RULES.md");
 export const MAX_RULES_BYTES = 8 * 1024;
 
 /** Heading the block is delimited by in every provider's system prompt. */
-export const USER_RULES_HEADING = "## standing rules (apply regardless of model)";
+export const USER_RULES_HEADING = "## the owner's standing rules (apply regardless of model)";
 
 /**
  * Off switch. Default ON — the rules apply everywhere unless USER_RULES_ENABLED

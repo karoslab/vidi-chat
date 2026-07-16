@@ -161,7 +161,7 @@ export function diffBriefs(before: Brief, after: Brief): SectionChange[] {
  * Reuses the ordinary thread turn path (POST /api/chat).
  *
  * The git rules are stated to the agent HERE (not just relied on from the act
- * rails) so the plan build follows the local workflow: the branch/no-push
+ * rails) so the plan build follows the standard workflow: the branch/no-push
  * behavior the agent already showed in testing, made explicit and consistent.
  * The act-mode confirm gate still independently forces a yes before any push,
  * so this is belt-and-braces, never a way around approval.

@@ -10,12 +10,25 @@ import { redactSecrets } from "./redact.ts";
  * "what did you do".
  */
 
+/** Per-actor hunk count for a file-change entry: how many hunks a given agent
+ *  session (or 'external') is responsible for. Lives here (not in
+ *  hunk-attribution.ts) so JournalEntry stays free of an import cycle — the
+ *  attribution module imports appendJournal from here. */
+export interface HunkActorTally {
+  /** An agent session id, or the 'external' sentinel from hunk-attribution.ts. */
+  actor: string;
+  hunks: number;
+}
+
 export interface JournalEntry {
   ts: number;
   threadId: string;
   tool: string;
   /** Brief human-readable input summary: bash command string, file path, etc. */
   summary: string;
+  /** Present only on file-change entries (tool === "FileChange"): the
+   *  agent-vs-external split of the change's hunks. See lib/hunk-attribution.ts. */
+  attribution?: HunkActorTally[];
 }
 
 // Resolved at CALL time (shared dataDir(): VIDI_DATA_DIR override, else

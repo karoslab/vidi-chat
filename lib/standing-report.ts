@@ -11,8 +11,8 @@ import { getUserConfig } from "./user-config.ts";
  * Standing Report — "vidi, good morning / what's broken".
  *
  * Gathers the ops picture DETERMINISTICALLY (no LLM, no cost): local service
- * health, deploy verdicts, today's briefing, the latest nightshift run,
- * and the agent fleet. The service portfolio and the deploy-verdict / nightshift
+ * health, deploy-guard verdicts, today's briefing, the latest nightshift run,
+ * and the agent fleet. The service portfolio and the deploy-guard / nightshift
  * paths are install-specific and come from VIDI_OPS_CONFIG (see below). The
  * voice route hands the result to a normal act turn as a rewritten prompt, so
  * the SPOKEN brief is composed by Claude on the subscription — grounded in this
@@ -23,14 +23,14 @@ import { getUserConfig } from "./user-config.ts";
  */
 
 /**
- * The ops portfolio (which services to probe, and where the deploy-verdict DB /
+ * The ops portfolio (which services to probe, and where the Deploy-Guard DB /
  * NightShift state live) is INSTALL-SPECIFIC, so it is not hardcoded in source —
  * a fresh checkout ships with an empty portfolio and reports it honestly. Point
  * VIDI_OPS_CONFIG at a JSON file to enable the ops probes:
  *
  *   {
  *     "services":      [{ "name": "my-service", "url": "http://localhost:3000/" }],
- *     "deployVerdictsDb": "path/to/verdicts.db",
+ *     "deployGuardDb": "deploy-guard/data/deployguard.db",
  *     "nightshiftDir": "nightshift/.nightshift"
  *   }
  *
@@ -45,11 +45,11 @@ export interface OpsService {
 }
 export interface OpsConfig {
   services: OpsService[];
-  deployVerdictsDb: string | null;
+  deployGuardDb: string | null;
   nightshiftDir: string | null;
 }
 
-const EMPTY_OPS_CONFIG: OpsConfig = { services: [], deployVerdictsDb: null, nightshiftDir: null };
+const EMPTY_OPS_CONFIG: OpsConfig = { services: [], deployGuardDb: null, nightshiftDir: null };
 
 /** A configured path is used as-is when absolute, else resolved under the
  *  workspace root — so the example config stays machine-independent. */
@@ -76,12 +76,11 @@ export function loadOpsConfig(): OpsConfig {
           )
           .map((s: OpsService) => ({ name: s.name, url: s.url }))
       : [];
-    const dgField = parsed.deployVerdictsDb ?? parsed.deployGuardDb; // legacy key accepted
-    const dgRaw = typeof dgField === "string" ? dgField.trim() : "";
+    const dgRaw = typeof parsed.deployGuardDb === "string" ? parsed.deployGuardDb.trim() : "";
     const nsRaw = typeof parsed.nightshiftDir === "string" ? parsed.nightshiftDir.trim() : "";
     return {
       services,
-      deployVerdictsDb: dgRaw ? resolveOpsPath(dgRaw) : null,
+      deployGuardDb: dgRaw ? resolveOpsPath(dgRaw) : null,
       nightshiftDir: nsRaw ? resolveOpsPath(nsRaw) : null,
     };
   } catch {
@@ -104,9 +103,9 @@ async function probeService(name: string, url: string): Promise<string> {
   }
 }
 
-function deployVerdicts(dbPath: string | null): Promise<string> {
+function deployGuardVerdicts(dbPath: string | null): Promise<string> {
   // Not configured on this install → an honest line, not a probe.
-  if (!dbPath) return Promise.resolve("deploy verdicts: not configured");
+  if (!dbPath) return Promise.resolve("deploy guard: not configured");
   // The sqlite3 CLI instead of node:sqlite — Next's bundler rewrites require()
   // and breaks the builtin inside the server runtime (found live by the very
   // first standing report). Read-only file URI so we can never lock DG's DB.
@@ -123,7 +122,7 @@ function deployVerdicts(dbPath: string | null): Promise<string> {
       { timeout: 3000 },
       (error, stdout) => {
         if (error || !stdout.trim()) {
-          resolve(`deploy verdicts: unreadable (${error?.message?.slice(0, 80) || "empty"})`);
+          resolve(`deploy guard: unreadable (${error?.message?.slice(0, 80) || "empty"})`);
         } else {
           resolve(stdout.trim().split("\n").join(", "));
         }
@@ -280,14 +279,14 @@ export async function gatherStandingReport(): Promise<string> {
   const ops = loadOpsConfig();
   const [services, dgVerdicts, tailscale] = await Promise.all([
     Promise.all(ops.services.map((s) => probeService(s.name, s.url))),
-    deployVerdicts(ops.deployVerdictsDb),
+    deployGuardVerdicts(ops.deployGuardDb),
     tailscaleStatus(),
   ]);
   // No portfolio configured → say so honestly rather than an empty line.
   const servicesLine = services.length ? services.join(" · ") : "no services configured";
   return [
     `SERVICES: ${servicesLine}`,
-    `DEPLOY VERDICTS (latest per project): ${dgVerdicts}`,
+    `DEPLOY GUARD (latest verdict per project): ${dgVerdicts}`,
     `TAILSCALE: ${tailscale}`,
     `PUSH TRANSPORTS (last delivery outcome): ${pushTransportHealth()}`,
     `AGENT FLEET: ${fleetStatus()}`,

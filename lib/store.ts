@@ -263,7 +263,7 @@ export function excerptTitle(text: string): string {
 
 /**
  * Faithful, human-readable Markdown transcript of a thread — for reading/sharing
- * a good session (NOT a memory path; an optional memory-ingest job may already feed gbrain).
+ * a good session (NOT a memory path; ops.brain-ingest already feeds gbrain).
  * Nothing is stripped: user/assistant turns become headings + verbatim blocks.
  * Stored messages carry no separate tool events, so any tool activity is already
  * inline in the assistant text and is preserved as-is.

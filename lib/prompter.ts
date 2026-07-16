@@ -85,6 +85,9 @@ export interface TierRun {
  */
 export const defaultTierRun: TierRun = async ({ tier, system, user }) => {
   const { model, effort } = resolveTierModel(tier);
+  // Deliberately the RAW provider, not getProvider("claude"): this internal
+  // prompter helper bypasses the circuit breaker on purpose so its own failures
+  // neither trip nor are gated by the user-facing chat breaker.
   const { claudeProvider } = await import("./providers/claude.ts");
   let full = "";
   for await (const ev of claudeProvider.sendMessage({
